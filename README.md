@@ -1,10 +1,14 @@
-AI Tool for Preliminary Diagnosis of Dermatological Manifestations
-📋 Project Overview
+**AI Tool for Preliminary Diagnosis of Dermatological Manifestations**
+
+
+**📋 Project Overview**
+
 This project is a web-based application designed to assist in the preliminary triage of skin conditions using Artificial Intelligence. Built with Flask and powered by Google's Gemini 2.5 Flash model, the tool analyzes user-uploaded images or live camera captures to provide a potential condition identification, along with causes, precautions, and awareness-level treatment options.
 
 ⚠️ Medical Disclaimer: > This tool is for educational and preliminary triage purposes only. It provides non-diagnostic insights and is not a substitute for professional medical advice, diagnosis, or treatment. Always consult a licensed dermatologist for clinical care.
 
-✨ Key Features
+**✨ Key Features**
+
 AI-Powered Analysis: Utilizes the gemini-2.5-flash model to analyze skin lesions with high speed and accuracy.
 
 Structured Output: Delivers clear results including:
@@ -27,7 +31,8 @@ History Tracking: Automatically saves previous analyses for users to review late
 
 Responsive UI: A modern, medical-themed interface compatible with mobile and desktop devices.
 
-🛠️ Tech Stack
+**🛠️ Tech Stack**
+
 Backend: Python, Flask
 
 AI Model: Google GenAI (Gemini 2.5 Flash)
