@@ -2,17 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>AI Dermatology Analyzer — Login</title>
+  <title>AI Dermatology Analyzer — Registration</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-  <!-- Lucide Icons for medical/analytical look -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     :root{
       --color-primary: #007BFF;
       --color-accent: #28A745;
-      --color-bg-start: #1e3a8a;
-      --color-bg-end: #0000ff;
+      --color-bg-start: #f8f9fa;
+      --color-bg-end: #e9ecef;
       --color-card: #FFFFFF;
       --color-text: #212529;
       --color-warn: #DC3545;
@@ -21,15 +20,14 @@
     body{
       min-height:100vh; color:var(--color-text);
       font-family: 'Inter', sans-serif;
-      background: linear-gradient(135deg, var(--color-bg-start) 50%, var(--color-bg-end) 50%);
+      background: linear-gradient(135deg, var(--color-bg-start) 0%, var(--color-bg-end) 100%);
       display:flex; justify-content:center; align-items:center;
       padding: 20px;
-      background-image: url('back.png');
+      background-image: url('regi.png');
       background-size: cover;
       background-position: center;
       background-attachment: fixed;
       background-repeat: no-repeat;
-      background-color: #e0e7ff;
     }
     .card-container {
         opacity: 0;
@@ -37,7 +35,7 @@
         animation: fadeIn 0.5s ease-out forwards;
         animation-delay: 0.2s;
         width: 100%;
-        max-width: 380px;
+        max-width: 420px;
     }
     @keyframes fadeIn {
         to {
@@ -52,7 +50,7 @@
       padding: 35px;
       width: 100%;
       transition: all 0.3s ease;
-      border-top: 5px solid var(--color-primary);
+      border-top: 5px solid var(--color-accent);
     }
     .head{ text-align: center; margin-bottom: 25px; }
     .title-wrapper {
@@ -63,12 +61,8 @@
         margin-bottom: 5px;
         transition: all 0.3s ease;
     }
-    .title-wrapper:hover{
-        transform: scale(1.05);
-        transition: all 0.3s ease;
-    }
     .title{
-        font-size: 26px; font-weight: 800; color: var(--color-primary);
+        font-size: 26px; font-weight: 800; color: var(--color-accent);
         letter-spacing: -0.5px;
     }
     .subtitle{ color: var(--color-text); font-size: 14px; opacity: 0.7; }
@@ -80,9 +74,9 @@
       background-color: #FAFAFA;
     }
     .input:focus{
-        border-color: var(--color-primary);
+        border-color: var(--color-accent);
         outline: none;
-        box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.2);
+        box-shadow: 0 0 0 4px rgba(40, 167, 69, 0.2);
     }
     .actions{ display: flex; justify-content: space-between; gap: 15px; margin-top: 25px; }
     .btn{
@@ -95,16 +89,12 @@
         transform: translateY(1px);
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
-    .btn.primary{ background-color: var(--color-primary); }
-    .btn.primary:hover{ background-color: #0056b3; }
-    .btn.alt{ background-color: var(--color-accent); }
-    .btn.alt:hover{ background-color: #1e873a; }
+    .btn.primary{ background-color: var(--color-accent); }
+    .btn.primary:hover{ background-color: #1e873a; }
+    .btn.alt{ background-color: var(--color-primary); }
+    .btn.alt:hover{ background-color: #0056b3; }
     .error{ color: var(--color-warn); text-align: center; margin-top: 15px; font-size: 14px; font-weight: 600; }
     .message{ color: var(--color-accent); text-align: center; margin-top: 15px; font-size: 14px; font-weight: 600; }
-    .login-form:hover {
-        transform: scale(1.03);
-        transition: all 0.5s ease;
-    }
   </style>
 </head>
 <body>
@@ -112,26 +102,26 @@
     <main class="card" role="main">
       <header class="head">
         <div class="title-wrapper">
-            <i data-lucide="microscope" style="color: var(--color-primary); width: 28px; height: 28px;"></i>
-            <div class="title">AI DERMATOLOGY</div>
-            <i data-lucide="heart-pulse" style="color: var(--color-accent); width: 28px; height: 28px;"></i>
+            <i data-lucide="user-plus" style="color: var(--color-accent); width: 28px; height: 28px;"></i>
+            <div class="title">NEW USER REGISTRATION</div>
+            <i data-lucide="shield-check" style="color: var(--color-primary); width: 28px; height: 28px;"></i>
         </div>
-        <div class="subtitle">Secure Patient Portal Login</div>
+        <div class="subtitle">Securely create your Patient or Doctor Portal Account</div>
       </header>
       {% if message %}<p class="message">{{ message }}</p>{% endif %}
       {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
-      <form action="{{ url_for('login') }}" method="post" autocomplete="on" class="login-form">
+      <form action="{{ url_for('register') }}" method="post" autocomplete="on">
         <div class="field">
-          <label for="username">Email or Patient ID</label>
-          <input id="username" class="input" type="text" name="username" placeholder="e.g., john.doe@clinic.com" required/>
+          <label for="username">Username</label>
+          <input id="username" class="input" type="text" name="username" placeholder="Choose a username" required/>
         </div>
         <div class="field">
           <label for="password">Password</label>
-          <input id="password" class="input" type="password" name="password" placeholder="••••••••" required/>
+          <input id="password" class="input" type="password" name="password" placeholder="Create a strong password" required/>
         </div>
         <div class="actions">
-          <button type="submit" class="btn primary">Login</button>
-          <a href="{{ url_for('register') }}" class="btn alt" role="button">Sign Up</a>
+          <button type="submit" class="btn primary">Register Account</button>
+          <a href="{{ url_for('login') }}" class="btn alt" role="button">Back to Login</a>
         </div>
       </form>
     </main>
