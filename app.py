@@ -1,7 +1,7 @@
 import os
 import io
 import json
-from flask import Flask, request, jsonify, render_template_string, redirect, url_for, session
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session
 from PIL import Image
 from google import genai
 from google.genai import types
@@ -49,7 +49,7 @@ users = load_users()
 
 # --- Gemini API Setup ---
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyCHwBaEtVQKWMfKGKI07Lje-sJLd73Cftg")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyD5tfJWT7Kzj4BOC2FIJA6M_bUWmxAucUg")
 try:
     client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
     if client:
@@ -120,7 +120,10 @@ def predict_disease_gemini(image):
     except Exception as e:
         print(f"Gemini API call failed: {e}")
         return {"error": f"Analysis Error: API call failed or returned invalid data. Details: {e}"}
-      @app.route('/login', methods=['GET', 'POST'])
+
+# ===================== Flask Routes (use external templates) =====================
+
+@app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form['username']
@@ -130,8 +133,8 @@ def login():
             session['logged_in'] = True
             session['username'] = username
             return redirect(url_for('home'))
-        return render_template_string(login_html, error="Invalid credentials")
-    return render_template_string(login_html, message=request.args.get('message'))
+        return render_template('login.html', error="Invalid credentials")
+    return render_template('login.html', message=request.args.get('message'))
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -139,14 +142,14 @@ def register():
         username = request.form['username']
         password = request.form['password']
         if username in users:
-            return render_template_string(
-                register_html,
+            return render_template(
+                'register.html',
                 error="Username already exists. Please choose a different one."
             )
         users[username] = {"password": password, "history": []}
         save_users(users)
         return redirect(url_for('login', message="Account created successfully! Please log in."))
-    return render_template_string(register_html)
+    return render_template('register.html')
 
 @app.route('/logout')
 def logout():
@@ -161,7 +164,7 @@ def home():
 
     username = session['username']
     history = users.get(username, {}).get('history', [])
-    return render_template_string(main_app_html, history=history)
+    return render_template('main_app.html', history=history)
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
