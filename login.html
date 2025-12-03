@@ -131,7 +131,7 @@
         </div>
         <div class="actions">
           <button type="submit" class="btn primary">Login</button>
-          <button type="button" class="btn alt" onclick="window.location.href = '{{ url_for('register') }}'">Sign Up</button>
+          <a href="{{ url_for('register') }}" class="btn alt" role="button">Sign Up</a>
         </div>
       </form>
     </main>
