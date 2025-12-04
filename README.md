@@ -93,11 +93,8 @@ Analyze: Click the "Analyze" button. The AI will process the image and display t
 View History: Click the "History" button in the top navigation bar to see your past scans.
 
 📂 Project Structure
-Plaintext
-
-├── app.py              # Main application file (Flask + Frontend Templates)
-├── users.json          # Database file (Automatically created on first run)
-└── README.md           # Project documentation
+Main_Folder/ app.py
+Templates Folder under main Folder/ login.html , signup.html , app.html 
 🛡️ Security & Privacy
 Data Storage: User credentials and history are stored locally in users.json.
 
