@@ -1,55 +1,34 @@
 import os
 import io
 import json
-from flask import Flask, request, jsonify, render_template, redirect, url_for, session
+from datetime import datetime
+
+from flask import (
+    Flask,
+    request,
+    jsonify,
+    render_template,
+    redirect,
+    url_for,
+    session,
+)
 from PIL import Image
+
+# Gemini SDK imports (keeps your original logic)
 from google import genai
 from google.genai import types
-from datetime import datetime  # Import datetime for history timestamps
+
+# MongoDB & security
+from pymongo import MongoClient, ASCENDING
+from pymongo.errors import DuplicateKeyError, PyMongoError
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # --- Flask Setup ---
+app = Flask(__name__, static_folder="static", template_folder="templates")
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24).hex())
 
-app = Flask(__name__)
-# Uses a secret key from environment or generates a random one
-app.secret_key = os.environ.get('FLASK_SECRET_KEY', os.urandom(24).hex())
-USERS_FILE = 'users.json'
-
-# --- User Management Functions (Persistent Storage via JSON file) ---
-
-def load_users():
-    """Loads user data from the persistent JSON file."""
-    if os.path.exists(USERS_FILE):
-        try:
-            with open(USERS_FILE, 'r') as f:
-                data = json.load(f)
-                migrated_data = {}
-                # Ensure all user entries have the correct nested structure
-                for username, info in data.items():
-                    if isinstance(info, str):
-                        # Migrate old simple password string to new structure
-                        migrated_data[username] = {"password": info, "history": []}
-                    else:
-                        # Ensure history key exists for existing structured users
-                        if "history" not in info:
-                            info["history"] = []
-                        migrated_data[username] = info
-                return migrated_data
-        except json.JSONDecodeError:
-            print("Warning: users.json is empty or corrupted. Starting with no users.")
-            return {}
-    else:
-        return {}
-
-def save_users(users):
-    """Saves the current user data dictionary to the persistent JSON file."""
-    with open(USERS_FILE, 'w') as f:
-        json.dump(users, f, indent=4)
-
-users = load_users()
-
-# --- Gemini API Setup ---
-
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyD5tfJWT7Kzj4BOC2FIJA6M_bUWmxAucUg")
+# --- Gemini API Setup (unchanged logic) ---
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyD-V9ub7-oruy7v-FrCdKo7mgvQkW2b720")
 try:
     client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
     if client:
@@ -60,8 +39,31 @@ except Exception as e:
     print(f"ERROR: Could not initialize Gemini Client. Error: {e}")
     client = None
 
-# --- Gemini Schema and Prediction Logic ---
+# --- MongoDB Setup ---
+# Provide MONGO_URI like:
+# export MONGO_URI="mongodb://localhost:27017"
+# export MONGO_DB_NAME="derm_app" (optional; default used if not provided)
+MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017/")
+MONGO_DB_NAME = os.environ.get("MONGO_DB_NAME", "derm_app")
 
+try:
+    mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+    # Optional: test server selection (will raise if cannot connect)
+    mongo_client.server_info()
+    db = mongo_client[MONGO_DB_NAME]
+    users_col = db.get_collection("users")
+    users_col.create_index([("username", ASCENDING)], unique=True)
+    # Optional separate history collection for scale (not required; we keep history inside user doc)
+    print(f"Connected to MongoDB at {MONGO_URI}, DB: {MONGO_DB_NAME}")
+except Exception as e:
+    # If DB fails, set users_col to None — routes will show errors
+    print(f"WARNING: Could not connect to MongoDB: {e}")
+    mongo_client = None
+    db = None
+    users_col = None
+
+
+# --- Gemini Schema and Prediction Logic (unchanged) ---
 DIAGNOSIS_SCHEMA = types.Schema(
     type=types.Type.OBJECT,
     properties={
@@ -88,6 +90,7 @@ DIAGNOSIS_SCHEMA = types.Schema(
     },
     required=["disease", "causes", "precautions", "tablets", "creams"]
 )
+
 
 def predict_disease_gemini(image):
     if client is None:
@@ -121,35 +124,90 @@ def predict_disease_gemini(image):
         print(f"Gemini API call failed: {e}")
         return {"error": f"Analysis Error: API call failed or returned invalid data. Details: {e}"}
 
-# ===================== Flask Routes (use external templates) =====================
+
+# --- MongoDB helper functions (users & history) ---
+def create_user(username: str, password: str) -> dict:
+    if users_col is None:
+        raise RuntimeError("Database not configured.")
+    hashed = generate_password_hash(password)
+    user_doc = {"username": username, "password": hashed, "history": []}
+    try:
+        res = users_col.insert_one(user_doc)
+        user_doc["_id"] = res.inserted_id
+        return user_doc
+    except DuplicateKeyError:
+        raise
+    except PyMongoError as e:
+        raise RuntimeError(str(e))
+
+
+def get_user(username: str):
+    if users_col is None:
+        return None
+    return users_col.find_one({"username": username})
+
+
+def check_user_password(username: str, password: str) -> bool:
+    user = get_user(username)
+    if not user:
+        return False
+    return check_password_hash(user.get("password", ""), password)
+
+
+def add_history_entry(username: str, disease: str, precautions: str, timestamp: str = None):
+    if users_col is None:
+        raise RuntimeError("Database not configured.")
+    if timestamp is None:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    entry = {"timestamp": timestamp, "disease": disease, "precautions": precautions}
+    users_col.update_one(
+        {"username": username},
+        {"$push": {"history": {"$each": [entry], "$position": 0}}}
+    )
+
+
+def get_history(username: str, limit: int = 100):
+    user = get_user(username)
+    if not user:
+        return []
+    history = user.get("history", [])
+    return history[:limit]
+
+
+# ===================== Flask Routes =====================
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        user_data = users.get(username)
-        if user_data and user_data.get('password') == password:
+        if check_user_password(username, password):
             session['logged_in'] = True
             session['username'] = username
             return redirect(url_for('home'))
         return render_template('login.html', error="Invalid credentials")
     return render_template('login.html', message=request.args.get('message'))
 
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        if username in users:
+        if get_user(username):
             return render_template(
                 'register.html',
                 error="Username already exists. Please choose a different one."
             )
-        users[username] = {"password": password, "history": []}
-        save_users(users)
+        try:
+            create_user(username, password)
+        except DuplicateKeyError:
+            return render_template('register.html', error="Username already exists. Please choose a different one.")
+        except Exception as e:
+            return render_template('register.html', error=f"Registration error: {e}")
         return redirect(url_for('login', message="Account created successfully! Please log in."))
     return render_template('register.html')
+
 
 @app.route('/logout')
 def logout():
@@ -157,14 +215,16 @@ def logout():
     session.pop('username', None)
     return redirect(url_for('login'))
 
+
 @app.route('/')
 def home():
     if 'logged_in' not in session:
         return redirect(url_for('login'))
 
     username = session['username']
-    history = users.get(username, {}).get('history', [])
+    history = get_history(username)
     return render_template('main_app.html', history=history)
+
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
@@ -176,7 +236,7 @@ def analyze():
     file = request.files['image']
     try:
         file_data = file.read()
-        img = Image.open(io.BytesIO(file_data))
+        img = Image.open(io.BytesIO(file_data)).convert("RGB")
     except Exception:
         return jsonify({"error": "Invalid image file"}), 400
 
@@ -184,16 +244,18 @@ def analyze():
     if "error" in diagnosis_data:
         return jsonify(diagnosis_data), 500
 
-    if 'logged_in' in session and session['username'] in users:
+    if 'logged_in' in session and session['username'] and users_col is not None:
         username = session['username']
-        history_item = {
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "disease": diagnosis_data.get("disease", "Unknown"),
-            "precautions": diagnosis_data.get("precautions", "No precautions provided.")
-        }
-        users[username]['history'].insert(0, history_item)
-        # No trimming: keep full history
-        save_users(users)
+        try:
+            add_history_entry(
+                username=username,
+                disease=diagnosis_data.get("disease", "Unknown"),
+                precautions=diagnosis_data.get("precautions", "No precautions provided."),
+                timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+        except Exception as e:
+            # Log but continue returning result to user
+            print(f"Warning: failed to save history: {e}")
 
     return jsonify({
         "disease": diagnosis_data.get("disease", "Unknown"),
@@ -203,14 +265,19 @@ def analyze():
         "creams": diagnosis_data.get("creams", "AI analysis unavailable."),
     })
 
+
 @app.route('/user_history', methods=['GET'])
 def user_history():
     if 'logged_in' not in session:
         return jsonify({"error": "Unauthorized"}), 401
 
     username = session['username']
-    history = users.get(username, {}).get('history', [])
+    history = get_history(username)
     return jsonify({"history": history})
 
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Helpful local warning if DB missing
+    if users_col is None:
+        print("Warning: MongoDB not configured or unreachable. Please set MONGO_URI and MONGO_DB_NAME appropriately.")
+    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
