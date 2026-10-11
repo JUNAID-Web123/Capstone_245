@@ -28,7 +28,7 @@ app = Flask(__name__, static_folder="static", template_folder="templates")
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.urandom(24).hex())
 
 # --- Gemini API Setup (unchanged logic) ---
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AQ.Ab8RN6JKJ6Nr6PcUrrJDVz-K5k6m0ahpb0R0XoocAQnNbu9cBg")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", " ")
 try:
     client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
     if client:
